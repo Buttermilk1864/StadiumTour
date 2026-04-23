@@ -7,7 +7,8 @@ st.set_page_config(page_title="Family Road Trip", layout="wide")
 st.title("⚾ Road Trip Dashboard")
 
 # Load data
-df = pd.read_csv("itinerary.csv", encoding="utf-8-sig")
+df = pd.read_csv("itinerary.csv", encoding="utf-8-sig", sep=",")
+df.columns = df.columns.str.strip() # This deletes any invisible spaces in the column names
 
 # Sidebar navigation
 page = st.sidebar.selectbox("Choose a View", ["Itinerary", "Map"])
