@@ -32,19 +32,30 @@ page = st.sidebar.selectbox("Scout Menu", ["Itinerary", "Interactive Map", "Live
 
 if page == "Itinerary":
     st.header("📅 The Master Schedule")
-    if not df.empty and 'Date' in df.columns:
+    
+    if not df.empty:
+        # Sort by date and time to keep things in order
+        df['Date'] = df['Date'].fillna("TBD")
+        
         for d in df['Date'].unique():
-            st.subheader(f"🗓️ {d}")
+            st.markdown(f"### 🗓️ {d}") # Using a cleaner markdown header
             day_df = df[df['Date'] == d]
+            
             for _, row in day_df.iterrows():
                 icon = "🚗" if row['Action'] == "Travel" else "⚾" if row['Action'] == "Activity" else "🍔"
-                with st.expander(f"{icon} {row['Start_Time']} - {row['Destination']}"):
-                    st.write(f"**From:** {row['Start_Loc']} ➡️ **To:** {row['End_Loc']}")
+                label = f"{icon} {row['Start_Time']} - {row['Destination']}"
+                
+                with st.expander(label):
+                    st.write(f"**Action:** {row['Action']} via {row['Method']}")
+                    st.write(f"📍 **{row['Start_Loc']}** ➡️ **{row['End_Loc']}**")
+                    
+                    # Display the Distance/Duration metrics
                     if str(row['Distance']) != "nan" and row['Distance'] != "N/A":
-                        st.success(f"📏 Distance: {row['Distance']} | ⏳ Duration: {row['Duration']}")
+                        c1, c2 = st.columns(2)
+                        c1.metric("Distance", row['Distance'])
+                        c2.metric("Est. Time", row['Duration'])
     else:
-        st.info("No scouting data found. Use the Admin GUI to add stops!")
-
+        st.info("No scouting data found yet!")
 elif page == "Interactive Map":
     st.header("📍 Route Mapping")
     
