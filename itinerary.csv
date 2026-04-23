@@ -1,2 +1,3 @@
 Date,Action,Method,Destination,Start_Time,Start_Loc,Start_Addr,End_Time,End_Loc,End_Addr,Distance,Duration
 6/9/2026,Travel,Drive,Nashville International Airport,5:15 PM,Home,"118 Mannon Court, Murfreesboro TN",6:00 PM,Nashville International Airport,"1 Terminal Dr, Nashville, TN 37214",,41 mins
+6/09/2026,Travel,Fly,Pittsburgh International Airport,7:45 PM CST,Nashville International Airport,"1 Terminal Dr, Nashville, TN 37214",10:40 PM EST,Pittsburgh International Airport,"1000 Airport Blvd, Pittsburgh, PA 15231",555 mi,8 hours 25 mins
