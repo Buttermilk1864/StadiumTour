@@ -20,11 +20,21 @@ df = pd.read_csv("itinerary.csv", sep=",", encoding="utf-8-sig")
 page = st.sidebar.selectbox("Choose a View", ["Itinerary", "Map", "Live ETA"])
 
 if page == "Itinerary":
-    st.header("Daily Schedule")
-    for _, row in df.iterrows():
-        with st.expander(f"Stop {row['Stop']}: {row['Location']}"):
-            st.write(f"**Activity:** {row['Activity']}")
-            st.link_button("View Food Menu", row['Menu_Link'])
+    st.header("📅 The Master Plan")
+    
+    # Group by Date so it looks like a real schedule
+    dates = df['Date'].unique()
+    for d in dates:
+        st.subheader(f"🗓️ {d}")
+        day_df = df[df['Date'] == d]
+        
+        for _, row in day_df.iterrows():
+            icon = "🚗" if row['Action'] == "Travel" else "⚾" if row['Action'] == "Activity" else "🍔"
+            with st.expander(f"{icon} {row['Start_Time']} - {row['Destination']}"):
+                st.write(f"**Activity:** {row['Action']} ({row['Method']})")
+                st.write(f"📍 **From:** {row['Start_Loc']} ➡️ **To:** {row['End_Loc']}")
+                if row['Distance'] != "N/A":
+                    st.info(f"📏 {row['Distance']} | ⏳ {row['Duration']}")
 
 elif page == "Map":
     st.header("Route Overview")
