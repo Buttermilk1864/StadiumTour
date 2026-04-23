@@ -1,28 +1,28 @@
 import streamlit as st
 import pandas as pd
-from streamlit_folium import st_folium
-import folium
 
-st.set_page_config(page_title="Family Road Trip", layout="wide")
-st.title("⚾ Road Trip Dashboard")
+st.set_page_config(page_title="Debug Mode", layout="wide")
+st.title("🛠️ Diagnostic Mode")
 
-# Load data
-df = pd.read_csv("itinerary.csv", encoding="utf-8-sig", sep=",")
-df.columns = df.columns.str.strip() # This deletes any invisible spaces in the column names
+st.write("Let's see what the computer is actually reading from the CSV...")
 
-# Sidebar navigation
-page = st.sidebar.selectbox("Choose a View", ["Itinerary", "Map"])
+try:
+    # 1. Read the raw text of the file
+    with open("itinerary.csv", "r", encoding="utf-8-sig") as f:
+        raw_text = f.read()
+    
+    st.subheader("1. The Raw Text File:")
+    st.text(raw_text)
 
-if page == "Itinerary":
-    st.header("Daily Schedule")
-    for _, row in df.iterrows():
-        with st.expander(f"Stop {row['Stop']}: {row['Location']}"):
-            st.write(f"**Activity:** {row['Activity']}")
-            st.link_button("View Food Menu", row['Menu_Link'])
+    # 2. Let Pandas try to load it
+    df = pd.read_csv("itinerary.csv", encoding="utf-8-sig")
+    
+    st.subheader("2. The Column Names Pandas Sees:")
+    # This will print out exactly what it thinks the columns are named
+    st.write(df.columns.tolist())
 
-elif page == "Map":
-    st.header("Route Overview")
-    m = folium.Map(location=[df.Lat.mean(), df.Lon.mean()], zoom_start=6)
-    for _, row in df.iterrows():
-        folium.Marker([row.Lat, row.Lon], popup=row.Location).add_to(m)
-    st_folium(m, width=700)
+    st.subheader("3. The Data Table:")
+    st.dataframe(df)
+
+except Exception as e:
+    st.error(f"Error reading the file: {e}")
