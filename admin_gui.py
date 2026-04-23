@@ -62,18 +62,18 @@ class App(ctk.CTk):
         self.entries[label] = combo
 
     def save_data(self):
-        # Fetch Google Data automatically
         start_addr = self.entries["Starting Address"].get()
         end_addr = self.entries["Ending Address"].get()
         dist, dur = "N/A", "N/A"
 
         if start_addr and end_addr:
             try:
-                res = gmaps.distance_matrix(start_addr, end_addr, mode="driving")
+                # ADDED units="imperial" to force Miles instead of Kilometers
+                res = gmaps.distance_matrix(start_addr, end_addr, mode="driving", units="imperial")
                 dist = res['rows'][0]['elements'][0]['distance']['text']
                 dur = res['rows'][0]['elements'][0]['duration']['text']
-            except:
-                pass
+            except Exception as e:
+                print(f"API Error: {e}")
 
         row = [self.entries[k].get() for k in self.entries.keys()] + [dist, dur]
         

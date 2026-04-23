@@ -4,71 +4,90 @@ from streamlit_folium import st_folium
 import folium
 import googlemaps
 
-st.set_page_config(page_title="Family Road Trip", layout="wide")
-st.title("⚾ Road Trip Dashboard")
+# 1. Page Config & Custom CSS for the "Scouting Report" look
+st.set_page_config(page_title="Stadium Tour Dashboard", layout="wide")
 
-# Initialize Google Maps Client using the secret key
+st.markdown("""
+    <style>
+    .main { background-color: #0e1117; }
+    .stMetric { background-color: #1e1e1e; padding: 15px; border-radius: 10px; border: 1px solid #2d5a27; }
+    h1, h2, h3 { color: #ffffff !important; }
+    </style>
+    """, unsafe_content_label=True)
+
+st.title("⚾ Stadium Tour Scouting Report")
+
+# Initialize Google Maps
 try:
     gmaps = googlemaps.Client(key=st.secrets["GOOGLE_MAPS_KEY"])
 except:
     gmaps = None
 
-# Load data
+# Load data with the new header structure
 df = pd.read_csv("itinerary.csv", sep=",", encoding="utf-8-sig")
+df.columns = df.columns.str.strip()
 
-# Sidebar navigation
-page = st.sidebar.selectbox("Choose a View", ["Itinerary", "Map", "Live ETA"])
+# Sidebar
+page = st.sidebar.selectbox("Scout Menu", ["Itinerary", "Interactive Map", "Live Radar (ETA)"])
 
 if page == "Itinerary":
-    st.header("📅 The Master Plan")
-    
-    # Group by Date so it looks like a real schedule
-    dates = df['Date'].unique()
-    for d in dates:
-        st.subheader(f"🗓️ {d}")
-        day_df = df[df['Date'] == d]
-        
-        for _, row in day_df.iterrows():
-            icon = "🚗" if row['Action'] == "Travel" else "⚾" if row['Action'] == "Activity" else "🍔"
-            with st.expander(f"{icon} {row['Start_Time']} - {row['Destination']}"):
-                st.write(f"**Activity:** {row['Action']} ({row['Method']})")
-                st.write(f"📍 **From:** {row['Start_Loc']} ➡️ **To:** {row['End_Loc']}")
-                if row['Distance'] != "N/A":
-                    st.info(f"📏 {row['Distance']} | ⏳ {row['Duration']}")
-
-elif page == "Map":
-    st.header("Route Overview")
-    m = folium.Map(location=[df.Lat.mean(), df.Lon.mean()], zoom_start=6)
-    for _, row in df.iterrows():
-        folium.Marker([row.Lat, row.Lon], popup=row.Location).add_to(m)
-    st_folium(m, width=700)
-
-elif page == "Live ETA":
-    st.header("⏱️ Time to Next Stop")
-    if gmaps is None:
-        st.error("Google Maps API key not found in Streamlit Secrets!")
+    st.header("📅 The Master Schedule")
+    if not df.empty and 'Date' in df.columns:
+        for d in df['Date'].unique():
+            st.subheader(f"🗓️ {d}")
+            day_df = df[df['Date'] == d]
+            for _, row in day_df.iterrows():
+                icon = "🚗" if row['Action'] == "Travel" else "⚾" if row['Action'] == "Activity" else "🍔"
+                with st.expander(f"{icon} {row['Start_Time']} - {row['Destination']}"):
+                    st.write(f"**From:** {row['Start_Loc']} ➡️ **To:** {row['End_Loc']}")
+                    if str(row['Distance']) != "nan" and row['Distance'] != "N/A":
+                        st.success(f"📏 Distance: {row['Distance']} | ⏳ Duration: {row['Duration']}")
     else:
-        current_loc = st.text_input("Where are you right now?", placeholder="e.g., Breezewood, PA or 123 Main St")
-        next_stop = st.selectbox("Where are you heading?", df['Location'].tolist())
+        st.info("No scouting data found. Use the Admin GUI to add stops!")
+
+elif page == "Interactive Map":
+    st.header("📍 Route Mapping")
+    # Filter for rows that actually have an address to plot
+    map_df = df.dropna(subset=['End_Addr'])
+    
+    if not map_df.empty:
+        # Center map on the first valid location
+        m = folium.Map(location=[39.8283, -98.5795], zoom_start=5, tiles="CartoDB dark_matter")
         
-        if st.button("Calculate ETA") and current_loc:
-            with st.spinner("Calculating route..."):
+        for _, row in map_df.iterrows():
+            # Geocode the destination if we don't have lat/lon
+            if gmaps:
                 try:
-                    # Ask Google for the driving distance and time
-                    result = gmaps.distance_matrix(origins=current_loc, 
-                                                   destinations=next_stop, 
-                                                   mode="driving", 
-                                                   departure_time="now") # 'now' uses live traffic
-                    
-                    trip_data = result['rows'][0]['elements'][0]
-                    
-                    if trip_data['status'] == 'OK':
-                        distance = trip_data['distance']['text']
-                        duration = trip_data['duration_in_traffic']['text']
-                        
-                        st.success(f"**Distance:** {distance}")
-                        st.info(f"**Estimated Drive Time (with live traffic):** {duration}")
-                    else:
-                        st.warning("Could not find a driving route between those locations.")
-                except Exception as e:
-                    st.error(f"Error calculating ETA: {e}")
+                    geocode_result = gmaps.geocode(row['End_Addr'])
+                    if geocode_result:
+                        lat = geocode_result[0]['geometry']['location']['lat']
+                        lng = geocode_result[0]['geometry']['location']['lng']
+                        folium.Marker(
+                            [lat, lng], 
+                            popup=f"{row['Destination']}\n{row['End_Time']}",
+                            tooltip=row['Destination'],
+                            icon=folium.Icon(color='green', icon='baseball-ball', prefix='fa')
+                        ).add_to(m)
+                except:
+                    pass
+        st_folium(m, width=900, height=500)
+    else:
+        st.warning("Add destinations with addresses to see them on the map.")
+
+elif page == "Live Radar (ETA)":
+    st.header("⏱️ Real-Time Scouting")
+    if gmaps:
+        curr = st.text_input("Current Scout Position", placeholder="e.g. Nashville, TN")
+        # Use 'Destination' column for the dropdown
+        dest_list = df['Destination'].unique().tolist() if not df.empty else []
+        dest = st.selectbox("Target Destination", dest_list)
+        
+        if st.button("Calculate Arrival") and curr:
+            # Force Imperial (Miles) here
+            res = gmaps.distance_matrix(curr, dest, mode="driving", units="imperial", departure_time="now")
+            if res['rows'][0]['elements'][0]['status'] == 'OK':
+                data = res['rows'][0]['elements'][0]
+                st.metric("Miles to Go", data['distance']['text'])
+                st.metric("Time in Traffic", data['duration_in_traffic']['text'])
+            else:
+                st.error("Route not found.")
