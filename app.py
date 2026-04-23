@@ -13,7 +13,7 @@ st.markdown("""
     .stMetric { background-color: #1e1e1e; padding: 15px; border-radius: 10px; border: 1px solid #2d5a27; }
     h1, h2, h3 { color: #ffffff !important; }
     </style>
-    """, unsafe_content_label=True)
+    """, unsafe_allow_html=True) # <-- This was the fixed line
 
 st.title("⚾ Stadium Tour Scouting Report")
 
@@ -47,32 +47,34 @@ if page == "Itinerary":
 
 elif page == "Interactive Map":
     st.header("📍 Route Mapping")
-    # Filter for rows that actually have an address to plot
-    map_df = df.dropna(subset=['End_Addr'])
     
-    if not map_df.empty:
-        # Center map on the first valid location
-        m = folium.Map(location=[39.8283, -98.5795], zoom_start=5, tiles="CartoDB dark_matter")
+    # Check if we actually have data and the address column exists
+    if not df.empty and 'End_Addr' in df.columns:
+        # Filter out any rows that have empty addresses
+        map_df = df.dropna(subset=['End_Addr'])
+        map_df = map_df[map_df['End_Addr'] != ""]
         
-        for _, row in map_df.iterrows():
-            # Geocode the destination if we don't have lat/lon
-            if gmaps:
-                try:
-                    geocode_result = gmaps.geocode(row['End_Addr'])
-                    if geocode_result:
-                        lat = geocode_result[0]['geometry']['location']['lat']
-                        lng = geocode_result[0]['geometry']['location']['lng']
-                        folium.Marker(
-                            [lat, lng], 
-                            popup=f"{row['Destination']}\n{row['End_Time']}",
-                            tooltip=row['Destination'],
-                            icon=folium.Icon(color='green', icon='baseball-ball', prefix='fa')
-                        ).add_to(m)
-                except:
-                    pass
-        st_folium(m, width=900, height=500)
+        if not map_df.empty:
+            m = folium.Map(location=[39.8283, -98.5795], zoom_start=4, tiles="CartoDB dark_matter")
+            
+            for _, row in map_df.iterrows():
+                if gmaps:
+                    try:
+                        geocode_result = gmaps.geocode(row['End_Addr'])
+                        if geocode_result:
+                            loc = geocode_result[0]['geometry']['location']
+                            folium.Marker(
+                                [loc['lat'], loc['lng']], 
+                                popup=f"{row['Destination']}",
+                                icon=folium.Icon(color='green', icon='star')
+                            ).add_to(m)
+                    except:
+                        continue
+            st_folium(m, width=900, height=500)
+        else:
+            st.info("No addresses found to map yet. Use the Admin GUI to add a stop with a full address!")
     else:
-        st.warning("Add destinations with addresses to see them on the map.")
+        st.info("Start scouting by adding your first stop in the Admin GUI!")
 
 elif page == "Live Radar (ETA)":
     st.header("⏱️ Real-Time Scouting")
